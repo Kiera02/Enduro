@@ -1,5 +1,10 @@
-import numpy as np
+#!/bin/python3
+
+# Global
 from typing import Dict
+
+# External
+import numpy as np
 
 class ReplayBuffer:
     """A simple numpy replay buffer."""

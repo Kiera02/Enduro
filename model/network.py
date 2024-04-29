@@ -1,3 +1,6 @@
+#!/bin/python3
+
+# External
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -9,18 +12,30 @@ class SelfAttention(nn.Module):
         super(SelfAttention, self).__init__()
         self.in_dim = in_dim
 
-        self.query_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim//8, kernel_size=1)
-        self.key_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim//8, kernel_size=1)
-        self.value_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim, kernel_size=1)
+        self.query = nn.Conv2d(in_channels=in_dim, out_channels=in_dim//8, kernel_size=1)
+        self.key = nn.Conv2d(in_channels=in_dim, out_channels=in_dim//8, kernel_size=1)
+        self.value = nn.Conv2d(in_channels=in_dim, out_channels=in_dim, kernel_size=1)
+
+        # Learnable parameter for scaling the self-attention value
         self.gamma = nn.Parameter(torch.zeros(1))
+
+        # Softmax layer to compute attention scores
         self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        '''
+        Inputs:
+            x: Input feature maps (Batch size x Channels x Width x Height)
+        Returns:
+            out: Self-attention value added to input feature
+            attention: Attention scores
+        '''
+
         batch_size, channels, width, height = x.size()
 
-        proj_query = self.query_conv(x).view(batch_size, -1, width * height).permute(0, 2, 1)
-        proj_key = self.key_conv(x).view(batch_size, -1, width * height)
-        proj_value = self.value_conv(x).view(batch_size, -1, width * height)
+        proj_query = self.query(x).view(batch_size, -1, width * height).permute(0, 2, 1)
+        proj_key = self.key(x).view(batch_size, -1, width * height)
+        proj_value = self.value(x).view(batch_size, -1, width * height)
 
         energy = torch.bmm(proj_query, proj_key)
         attention = self.softmax(energy)
