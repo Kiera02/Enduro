@@ -10,11 +10,11 @@ class ReplayBuffer:
     """A simple numpy replay buffer."""
 
     def __init__(self, obs_shape: tuple, size: int, batch_size: int = 32):
-        self.obs_buf = np.zeros([size, *obs_shape], dtype=np.float32)
-        self.next_obs_buf = np.zeros([size, *obs_shape], dtype=np.float32)
-        self.acts_buf = np.zeros([size], dtype=np.float32)
+        self.obs_buf = np.zeros([size, *obs_shape], dtype=np.uint8)
+        self.next_obs_buf = np.zeros([size, *obs_shape], dtype=np.uint8)
+        self.acts_buf = np.zeros([size], dtype=np.int32)
         self.rews_buf = np.zeros([size], dtype=np.float32)
-        self.done_buf = np.zeros(size, dtype=np.float32)
+        self.done_buf = np.zeros(size, dtype=np.bool_)
         self.max_size, self.batch_size = size, batch_size
         self.ptr, self.size, = 0, 0
 
