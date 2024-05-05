@@ -49,6 +49,7 @@ class SelfAttention(nn.Module):
 class CNN(nn.Module):
     def __init__(self, in_channels, num_classes, input_width, input_height):
         super(CNN, self).__init__()
+
         self.conv1 = nn.Conv2d(in_channels, 64, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
         self.conv3 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
@@ -57,12 +58,14 @@ class CNN(nn.Module):
 
         self.fc = nn.Linear(256 * (input_width // 8) * (input_height // 8), num_classes)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
+        print(x.shape)
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
         x = self.pool(F.relu(self.conv3(x)))
 
         x, _ = self.attention(x)
+        print(x.shape)
 
         x = torch.flatten(x, 1)
         x = self.fc(x)
@@ -71,3 +74,6 @@ class CNN(nn.Module):
 if __name__ == "__main__":
     cnn = CNN(in_channels=3, num_classes=10, input_width=64, input_height=64)
     print(cnn)
+    input_data = torch.randn(1, 3, 64, 64)  # Example input data
+    output = cnn.forward(input_data)  # Run the forward pass
+    print(output)  # Print the output

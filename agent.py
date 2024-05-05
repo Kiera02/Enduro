@@ -36,7 +36,7 @@ class DQNAgent:
         """Initialization."""
         # Environment might need to be wrapped to handle image processing
         self.env = env
-        obs_dim = env.observation_space.shape  # This should reflect the image dimensions (C, H, W)
+        obs_dim = env.observation_space.shape # (high, width, channels)
         action_dim = env.action_space.n
 
         self.memory = ReplayBuffer(obs_dim, memory_size, batch_size)
@@ -53,8 +53,8 @@ class DQNAgent:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Initialize DQN and target DQN with a neural network suitable for handling image input
-        self.dqn = CNN(obs_dim[0], action_dim, obs_dim[1],obs_dim[2]).to(self.device)
-        self.dqn_target = CNN(obs_dim[0], action_dim, obs_dim[1],obs_dim[2]).to(self.device)
+        self.dqn = CNN(obs_dim[2], action_dim, obs_dim[1],obs_dim[0]).to(self.device)
+        self.dqn_target = CNN(obs_dim[2], action_dim, obs_dim[1],obs_dim[0]).to(self.device)
         self.dqn_target.load_state_dict(self.dqn.state_dict())
         self.dqn_target.eval()
 
