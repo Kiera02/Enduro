@@ -1,220 +1,117 @@
 # Internal
 import os
 import sys
-from typing import Dict, List, Tuple
 
 # External
-import gymnasium as gym
-import numpy as np
 import torch
-import torch.optim as optim
-from torch.nn import functional as F
-import matplotlib.pyplot as plt
+import numpy as np
 
 # Path Append
 sys.path.append(os.path.abspath(os.curdir))
 
 # Internal
-from model.network import CNN
-from model.replaybuffer import ReplayBuffer
+from model.network import DeepQNetwork
+from memory.replaybuffer import ReplayBuffer
+
 
 class DQNAgent:
-    """DQN Agent interacting with environment."""
     def __init__(
-        self,
-        env: gym.Env,
-        memory_size: int,
-        batch_size: int,
-        target_update: int,
-        epsilon_decay: float,
-        learning_rate: float,
-        seed: int,
-        max_epsilon: float = 1.0,
-        min_epsilon: float = 0.1,
-        gamma: float = 0.99,
+            self, input_shape, action_shape, gamma, epsilon, learning_rate,
+            batch_size=32, memory_size=10000, epsilon_minimum=0.01,
+            epsilon_decrement=1e-5, target_replace_frequency=1000,
+            checkpoint_dir='temp/'
     ):
-        """Initialization."""
-        # Environment might need to be wrapped to handle image processing
-        self.env = env
-        obs_dim = env.observation_space.shape # (high, width, channels)
-        action_dim = env.action_space.n
-
-        self.memory = ReplayBuffer(obs_dim, memory_size, batch_size)
-        self.batch_size = batch_size
-        self.epsilon = max_epsilon
-        self.epsilon_decay = epsilon_decay
-        self.learning_rate = learning_rate
-        self.seed = seed
-        self.max_epsilon = max_epsilon
-        self.min_epsilon = min_epsilon
-        self.target_update = target_update
         self.gamma = gamma
+        self.epsilon = epsilon
+        self.batch_size = batch_size
+        self.epsilon_minimum = epsilon_minimum
+        self.epsilon_decrement = epsilon_decrement
+        self.target_replace_frequency = target_replace_frequency
+        self.checkpoint_dir = checkpoint_dir
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.action_space = [i for i in range(action_shape)]
+        self.batch_space = [i for i in range(self.batch_size)]
+        self.current_step = 0
 
-        # Initialize DQN and target DQN with a neural network suitable for handling image input
-        self.dqn = CNN(obs_dim[2], action_dim, obs_dim[1],obs_dim[0]).to(self.device)
-        self.dqn_target = CNN(obs_dim[2], action_dim, obs_dim[1],obs_dim[0]).to(self.device)
-        self.dqn_target.load_state_dict(self.dqn.state_dict())
-        self.dqn_target.eval()
+        self.replay_memory = ReplayBuffer(memory_size, input_shape)
+        self.eval_network, self.target_network = self.create_networks(
+            input_shape, action_shape, learning_rate
+        )
 
-        # Optimizer for the DQN
-        self.optimizer = optim.Adam(self.dqn.parameters(),lr=learning_rate)
+    def create_networks(self, *args, **kwargs):
+        return (
+            DeepQNetwork(*args, **kwargs, checkpoint_file=self.checkpoint_dir + 'dqn_eval'),
+            DeepQNetwork(*args, **kwargs, checkpoint_file=self.checkpoint_dir + 'dqn_target')
+        )
 
-        self.transition = list()  # Temporarily stores one transition
-        self.is_test = False
+    def choose_action(self, observation):
+        if np.random.random() < self.epsilon:
+            return np.random.choice(self.action_space)
 
-    def select_action(self, state: np.ndarray) -> np.ndarray:
-        """Select an action from the input state."""
-        # epsilon greedy policy
-        if self.epsilon > np.random.random():
-            selected_action = self.env.action_space.sample()
+        state = torch.tensor([observation], dtype=torch.float)
+        state = state.to(self.eval_network.device)
+        actions = self.eval_network.forward(state)
+        return torch.argmax(actions).item()
+
+    def replace_target_network(self):
+        if self.current_step % self.target_replace_frequency == 0:
+            self.target_network.load_state_dict(self.eval_network.state_dict())
+
+    def decrement_epsilon(self):
+        if self.epsilon > self.epsilon_minimum:
+            self.epsilon -= self.epsilon_decrement
         else:
-            with torch.no_grad():
-                q_values = self.dqn(torch.FloatTensor(state).unsqueeze(0).to(self.device))
-                selected_action = q_values.argmax().item()
+            self.epsilon = self.epsilon_minimum
 
-        if not self.is_test:
-            self.transition.append(state)
-            self.transition.append(selected_action)
+    def save_networks(self):
+        self.target_network.save_checkpoint()
+        self.eval_network.save_checkpoint()
 
+    def load_networks(self):
+        self.target_network.load_checkpoint()
+        self.eval_network.load_checkpoint()
 
-        return selected_action
+    def save_to_memory(self, state, action, reward, new_state, done):
+        self.replay_memory.save(state, action, reward, new_state, done)
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
-        """Take an action and return the response of the env."""
-        next_state, reward, terminated, truncated, _ = self.env.step(action)
-        done = terminated or truncated
+    def sample_memory(self):
+        state, action, reward, new_state, done = self.replay_memory.sample(self.batch_size)
+        return (
+            self.eval_network.to_tensor(state),
+            self.eval_network.to_tensor(action),
+            self.eval_network.to_tensor(reward),
+            self.eval_network.to_tensor(new_state),
+            self.eval_network.to_tensor(done)
+        )
 
-        if not self.is_test:
-            self.transition += [reward, next_state, done]
-            self.memory.store(self.transition[0], action, reward, next_state, done)
+    def learn(self):
 
-        return next_state, reward, done
+        # Fill all the replay memory before starting
+        if self.replay_memory.memory_counter < self.batch_size * 10:
+            return
 
-    def train(self, num_frames: int, plotting_interval: int = 200):
-        """Train the agent."""
-        self.is_test = False
+        self.eval_network.optimizer.zero_grad()
+        self.replace_target_network()
+        states, actions, rewards, next_states, done_flags = self.sample_memory()
 
-        state, _ = self.env.reset(seed=self.seed)
-        update_cnt = 0
-        epsilons = []
-        losses = []
-        scores = []
-        score = 0
+        # For each item in batch we need the action_value of the specific action
+        action_values = self.eval_network.forward(states)
+        action_values = action_values[self.batch_space, actions]
 
-        for frame_idx in range(1, num_frames + 1):
-            action = self.select_action(state)
-            next_state, reward, done = self.step(action)
+        # We need the next state max action values. We forward next_states,
+        # through the target network, take a max over the action dimension
+        # and return the first value of the tuple (value, indices)
+        # Doc here: https://pytorch.org/docs/master/generated/torch.max.html#torch.max
+        action_values_next = self.target_network.forward(next_states)
+        action_values_next = action_values_next.max(dim=1)[0]
 
-            state = next_state
-            score += reward
+        # Mask everything that is done to zero
+        action_values_next[done_flags] = 0.0
 
-            # if episode ends
-            if done:
-                state, _ = self.env.reset(seed=self.seed)
-                scores.append(score)
-                score = 0
+        # Calculate target action value using the equation:
+        action_value_target = rewards + self.gamma * action_values_next
 
-            # if training is ready
-            if len(self.memory) >= self.batch_size:
-                loss = self.update_model()
-                losses.append(loss)
-                update_cnt += 1
-
-                # linearly decrease epsilon
-                self.epsilon = max(
-                    self.min_epsilon, self.epsilon - (
-                        self.max_epsilon - self.min_epsilon
-                    ) * self.epsilon_decay
-                )
-                epsilons.append(self.epsilon)
-
-                # if hard update is needed
-                if update_cnt % self.target_update == 0:
-                    self._target_hard_update()
-
-            # plotting
-            if frame_idx % plotting_interval == 0:
-                self._plot(frame_idx, scores, losses, epsilons)
-
-        self.env.close()
-
-    def test(self, video_folder: str) -> None:
-        """Test the agent."""
-        self.is_test = True
-
-        # for recording a video
-        naive_env = self.env
-        self.env = gym.wrappers.RecordVideo(self.env, video_folder=video_folder)
-
-        state, _ = self.env.reset(seed=self.seed)
-        done = False
-        score = 0
-
-        while not done:
-            action = self.select_action(state)
-            next_state, reward, done = self.step(action)
-
-            state = next_state
-            score += reward
-
-        print("score: ", score)
-        self.env.close()
-
-        # reset
-        self.env = naive_env
-
-    def update_model(self) -> torch.Tensor:
-        """Update the model by gradient descent."""
-        samples = self.memory.sample_batch()
-
-        loss = self._compute_dqn_loss(samples)
-
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        return loss.item()
-
-    def _compute_dqn_loss(self, samples: Dict[str, np.ndarray]) -> torch.Tensor:
-        """Compute DQN loss using the samples from memory."""
-        device = self.device  # for shortening the following lines
-        state = torch.FloatTensor(samples["obs"]).to(device)
-        next_state = torch.FloatTensor(samples["next_obs"]).to(device)
-        action = torch.LongTensor(samples["acts"].reshape(-1, 1)).to(device)
-        reward = torch.FloatTensor(samples["rews"].reshape(-1, 1)).to(device)
-        done = torch.FloatTensor(samples["done"].reshape(-1, 1)).to(device)
-
-        curr_q_value = self.dqn(state).gather(1, action)
-        next_q_value = self.dqn_target(next_state).max(dim=1, keepdim=True)[0].detach()
-        mask = 1 - done
-        target = (reward + self.gamma * next_q_value * mask).to(device)
-
-        loss = F.smooth_l1_loss(curr_q_value, target)
-
-        return loss
-
-    def _target_hard_update(self):
-        """Hard update: target <- local."""
-        self.dqn_target.load_state_dict(self.dqn.state_dict())
-
-    def _plot(
-        self,
-        frame_idx: int,
-        scores: List[float],
-        losses: List[float],
-        epsilons: List[float],
-    ):
-        """Plot the training progresses."""
-        plt.figure(figsize=(20, 5))
-        plt.subplot(131)
-        plt.title('frame %s. score: %s' % (frame_idx, np.mean(scores[-10:])))
-        plt.plot(scores)
-        plt.subplot(132)
-        plt.title('loss')
-        plt.plot(losses)
-        plt.subplot(133)
-        plt.title('epsilons')
-        plt.plot(epsilons)
-        plt.show()
+        # Propagate errors and step
+        self.eval_network.backward(action_value_target, action_values)
+        self.decrement_epsilon()
+        self.current_step += 1

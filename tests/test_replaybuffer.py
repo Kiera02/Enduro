@@ -11,7 +11,7 @@ import pytest
 sys.path.append(os.path.abspath(os.curdir))
 
 # Internal
-from model.replaybuffer import ReplayBuffer
+from memory.replaybuffer import ReplayBuffer
 
 def test_initialization():
     obs_shape = (3, 84, 84)
