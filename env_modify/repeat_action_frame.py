@@ -23,7 +23,7 @@ class RepeatActionInFrames(gym.Wrapper):
         info = {}
 
         for i in range(self.repeat):
-            observation, reward, done, info = self.env.step(action)
+            observation, reward, _, done, info = self.env.step(action)
             total_reward += reward
             self.frames.append(observation)
 
@@ -32,9 +32,9 @@ class RepeatActionInFrames(gym.Wrapper):
 
         # Open queue into arguments for np.maximum
         maximum_of_frames = np.maximum(*self.frames)
-        return maximum_of_frames, total_reward, done, info
+        return maximum_of_frames, total_reward, False, done, info
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
         observation = self.env.reset()
         self.frames.clear()
         self.frames.append(observation)

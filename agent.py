@@ -48,7 +48,7 @@ class DQNAgent:
         if np.random.random() < self.epsilon:
             return np.random.choice(self.action_space)
 
-        state = torch.tensor([observation], dtype=torch.float)
+        state = torch.tensor(np.expand_dims(np.array(observation), 0), dtype=torch.float)
         state = state.to(self.eval_network.device)
         actions = self.eval_network.forward(state)
         return torch.argmax(actions).item()

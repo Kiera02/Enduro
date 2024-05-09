@@ -4,6 +4,7 @@ import gymnasium as gym
 import numpy as np
 import matplotlib.pyplot as plt
 from gymnasium.wrappers import GrayScaleObservation, FrameStack
+from tqdm import tqdm
 
 # Path Append
 sys.path.append(os.path.abspath(os.curdir))
@@ -25,15 +26,16 @@ if __name__ == '__main__':
     frame_shape = (84, 84)
     gamma = 0.99
     epsilon = 1
-    learning_rate = 0.0001
+    learning_rate = 0.01
     games = 200
     rolling_average_n = 200
     directory = 'temp/'
 
+
     if not os.path.exists(directory):
         raise NotADirectoryError('Folder specified to save plots and models does not exist')
 
-    env = gym.make('ALE/Enduro-v5')
+    env = gym.make('ALE/Enduro-v5', max_episode_steps=3000)
     env = prep_environment(env, frame_shape, repeat)
 
     agent = DQNAgent(
@@ -50,6 +52,7 @@ if __name__ == '__main__':
     plot_name = f'{directory}dqn_agent_enduro_plot.png'
     scores, steps, rolling_means, epsilons = [], [], [], []
     current_step = 0
+    progress = tqdm("Train: ")
 
     for episode in range(games):
         done = False
@@ -58,13 +61,14 @@ if __name__ == '__main__':
 
         while not done:
             action = agent.choose_action(observation)
-            new_observation, reward, done, info = env.step(action)
+            new_observation, reward,_ ,done, info = env.step(action)
             score += reward
 
             agent.save_to_memory(observation, action, reward, new_observation, done)
             agent.learn()
             observation = new_observation
             current_step += 1
+            progress.set_postfix({"step":current_step})
 
         scores.append(score)
         steps.append(current_step)
