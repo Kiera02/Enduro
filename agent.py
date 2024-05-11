@@ -33,6 +33,7 @@ class DQNAgent:
         self.batch_space = [i for i in range(self.batch_size)]
         self.current_step = 0
 
+
         self.replay_memory = ReplayBuffer(memory_size, input_shape)
         self.eval_network, self.target_network = self.create_networks(
             input_shape, action_shape, learning_rate
