@@ -26,7 +26,7 @@ if __name__ == '__main__':
     frame_shape = (84, 84)
     gamma = 0.99
     epsilon = 1
-    learning_rate = 0.01
+    learning_rate = 0.0001
     games = 200
     rolling_average_n = 200
     directory = 'temp/'
