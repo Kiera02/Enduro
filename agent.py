@@ -116,3 +116,7 @@ class DQNAgent:
         self.eval_network.backward(action_value_target, action_values)
         self.decrement_epsilon()
         self.current_step += 1
+
+    def test(self):
+        self.eval_network.eval()
+        self.target_network.eval()
