@@ -26,6 +26,8 @@ if __name__ == '__main__':
     frame_shape = (84, 84)
     gamma = 0.99
     epsilon = 1
+    min_epsilon = 0.01
+    epsilon_decay = 0.995
     learning_rate = 0.0001
     games = 200
     rolling_average_n = 200
@@ -35,7 +37,7 @@ if __name__ == '__main__':
     if not os.path.exists(directory):
         raise NotADirectoryError('Folder specified to save plots and models does not exist')
 
-    env = gym.make('ALE/Enduro-v5', max_episode_steps=3000)
+    env = gym.make('ALE/Enduro-v5', max_episode_steps=5000)
     env = prep_environment(env, frame_shape, repeat)
 
     agent = DQNAgent(
@@ -52,9 +54,9 @@ if __name__ == '__main__':
     plot_name = f'{directory}dqn_agent_enduro_plot.png'
     scores, steps, rolling_means, epsilons = [], [], [], []
     current_step = 0
-    progress = tqdm("Train: ")
+    progress = tqdm(range(games), desc="Train")
 
-    for episode in range(games):
+    for episode in progress:
         done = False
         score = 0
         observation , _= env.reset()
@@ -68,7 +70,6 @@ if __name__ == '__main__':
             agent.learn()
             observation = new_observation
             current_step += 1
-            progress.set_postfix({"step":current_step})
 
         scores.append(score)
         steps.append(current_step)
@@ -77,11 +78,16 @@ if __name__ == '__main__':
         rolling_mean = np.mean(scores[-rolling_average_n:])
         rolling_means.append(rolling_mean)
 
-        print(f"Ep: {episode} | Score: {score} | Avg: {rolling_mean:.1f} | Best: {best_score:.1f}")
+        progress.set_postfix({"Episode": episode, "Score": score, "Avg": rolling_mean, "Best": best_score})
 
         if score > best_score:
             best_score = score
             agent.save_networks()
+
+        # Decay epsilon
+        if agent.epsilon > min_epsilon:
+            agent.epsilon *= epsilon_decay
+            agent.epsilon = max(agent.epsilon, min_epsilon)
 
     fig, ax = plt.subplots()
     ax.plot(steps, rolling_means, color="red")
