@@ -36,7 +36,11 @@ class DeepQNetwork(nn.Module):
 
     @staticmethod
     def get_device():
-        device_name = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+        if torch.backends.mps.is_available():
+            device_name = 'mps'
+        else:
+            device_name = 'cpu'
+        
         device = torch.device(device_name)
         logging.info(f'Using device: {device}')
         return device
