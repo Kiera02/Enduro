@@ -17,20 +17,24 @@ class DeepQNetwork(nn.Module):
         self.learning_rate = learning_rate
         self.checkpoint_file = checkpoint_file
 
-        # The input_dims[0] corresponds to the channel
+        # Convolutional layers
         self.conv1 = nn.Conv2d(self.input_shape[0], 32, 8, stride=4)
         self.conv2 = nn.Conv2d(32, 64, 4, 2)
         self.conv3 = nn.Conv2d(64, 64, 3, 1)
 
-        self.attention = MultiheadAttention(embed_dim=64, num_heads=4)
+        # Attention mechanism
+        self.attention = MultiheadAttention(embed_dim=64, num_heads=4, batch_first=True)
 
+        # Fully connected layers
         flattened_shape = self.calculate_flattened_shape(self.input_shape)
-
         self.fc1 = nn.Linear(flattened_shape, 512)
         self.fc2 = nn.Linear(512, output_shape)
 
+        # Loss and optimizer
         self.loss = nn.MSELoss()
         self.optimizer = optim.RMSprop(self.parameters(), lr=self.learning_rate)
+
+        # Device setup
         self.device = self.get_device()
         self.to(self.device)
 
@@ -50,10 +54,6 @@ class DeepQNetwork(nn.Module):
       x = self.conv1(x)
       x = self.conv2(x)
       x = self.conv3(x)
-      x = x.permute(0, 2, 3, 1)  # Reshape to (batch_size, height, width, channels)
-      x = x.view(-1, x.size(1) * x.size(2), x.size(3))  # Reshape to (batch_size * height * width, channels)
-      x = self.attention(x, x, x)[0]  # Apply attention mechanism
-      x = x.view(1, -1, x.size(2))  # Reshape back to (batch_size, flattened_size, channels)
       return int(np.prod(x.size()))
 
     def save_checkpoint(self):
@@ -68,15 +68,26 @@ class DeepQNetwork(nn.Module):
         return torch.tensor(inputs).to(self.device)
 
     def forward(self, inputs):
-        # Convolutions
+        # Convolutional layers
         x = f.relu(self.conv1(inputs))
         x = f.relu(self.conv2(x))
         x = f.relu(self.conv3(x))
+
+        # Reshape for attention
+        x = x.permute(0, 2, 3, 1)  
+        x = x.view(-1, x.size(1) * x.size(2), x.size(3))
+
+        # Apply attention mechanism
+        x, _ = self.attention(x, x, x)
+
         # Flatten
-        x = x.view(x.size()[0], -1)
-        # Linear layers
+        x = x.view(x.size(0), -1)
+
+         # Fully connected layers
         x = f.relu(self.fc1(x))
-        return self.fc2(x)
+        x = self.fc2(x)
+
+        return x
 
     def backward(self, target, value):
         loss = self.loss(target, value).to(self.device)

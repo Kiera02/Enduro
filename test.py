@@ -18,9 +18,9 @@ def save_frames_as_video(frames, video_filename, fps=30):
 if __name__ == '__main__':
     frame_shape = (84, 84)
     gamma = 0.99
-    epsilon = 1
+    epsilon = 0.01
     learning_rate = 0.0001
-    games = 20
+    games = 2
 
     env = gym.make('ALE/Enduro-v5', max_episode_steps=3000, render_mode='rgb_array')
     env = prep_environment(env, frame_shape, repeat=4)
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     )
     agent.load_networks()
 
-    agent.test()
+    # agent.test()
 
     for episode in range(games):
         done = False
