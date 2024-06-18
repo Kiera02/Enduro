@@ -1,6 +1,6 @@
 # For rules: https://beta.ruff.rs/docs/rules
 select = [ "E", "F", "B", "I" ]
-ignore = [ "C901", "E701", "E402", "D203", "E211", "I001", "B904", "B008", "B905", "B028", "E741" ]
+ignore = [ "C901", "E701", "E402", "D203", "E211", "I001", "B904", "B008", "B905", "B028", "E741" ,"B007"]
 
 # Selector
 exclude = [ ".git", ".vscode", "log", "temp", "venv", "old", "build", "dist" ]
