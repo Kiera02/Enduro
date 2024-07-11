@@ -22,8 +22,8 @@ class DeepQNetwork(nn.Module):
         self.conv2 = nn.Conv2d(32, 64, 4, 2)
         self.conv3 = nn.Conv2d(64, 64, 3, 1)
 
-        # Attention mechanism
-        self.attention = MultiheadAttention(embed_dim=64, num_heads=4, batch_first=True)
+        # # Attention mechanism
+        # self.attention = MultiheadAttention(embed_dim=64, num_heads=4, batch_first=True)
 
         # Fully connected layers
         flattened_shape = self.calculate_flattened_shape(self.input_shape)
@@ -73,15 +73,15 @@ class DeepQNetwork(nn.Module):
         x = f.relu(self.conv2(x))
         x = f.relu(self.conv3(x))
 
-        # Reshape for attention
-        x = x.permute(0, 2, 3, 1)  
-        x = x.view(-1, x.size(1) * x.size(2), x.size(3))
+        # # Reshape for attention
+        # x = x.permute(0, 2, 3, 1)  
+        # x = x.view(-1, x.size(1) * x.size(2), x.size(3))
 
-        # Apply attention mechanism
-        x, _ = self.attention(x, x, x)
+        # # Apply attention mechanism
+        # x, _ = self.attention(x, x, x)
 
         # Flatten
-        x = x.view(x.size(0), -1)
+        x = x.view(x.size()[0], -1)
 
          # Fully connected layers
         x = f.relu(self.fc1(x))

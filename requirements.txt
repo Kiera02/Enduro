@@ -5,4 +5,3 @@ opencv-python==4.9.0.80
 pytest==8.2.0
 torchvision==0.17.2
 tqdm
-
