@@ -48,8 +48,7 @@ class ImgPosEnc(nn.Module):
         torch.Tensor
             [b, h, w, d]
         """
-        mask = torch.ones(x.size()[:3], dtype=torch.bool, device=x.device)
-        not_mask = ~mask
+        not_mask = torch.ones(x.size()[:3], dtype=torch.bool, device=x.device)
         y_embed = not_mask.cumsum(1, dtype=torch.float32)
         x_embed = not_mask.cumsum(2, dtype=torch.float32)
         if self.normalize:
@@ -102,15 +101,15 @@ class DeepQNetwork(nn.Module):
         self.checkpoint_file = checkpoint_file
 
         # Convolutional layers
-        self.conv1 = nn.Conv2d(self.input_shape[0], 64, 8, stride=4)
-        self.conv2 = nn.Conv2d(64, 128, 4, 2)
-        self.conv3 = nn.Conv2d(128, 512, 3, 1)
+        self.conv1 = nn.Conv2d(self.input_shape[0], 32, 8, stride=4)
+        self.conv2 = nn.Conv2d(32, 64, 4, 2)
+        self.conv3 = nn.Conv2d(64, 256, 3, 1)
 
         # # Attention mechanism
         # Position encoding
-        self.pos_enc = ImgPosEnc(d_model=512, temperature=10000.0, normalize=True)
+        self.pos_enc = ImgPosEnc(d_model=256, temperature=10000.0, normalize=True)
 
-        self.attention = EncoderAttention(d_model=512, nhead=8, dim_feedforward=2048, dropout=0.1, num_encoder_layers=3)
+        self.attention = EncoderAttention(d_model=256, nhead=4, dim_feedforward=512, dropout=0.1, num_encoder_layers=1)
 
         # Fully connected layers
         flattened_shape = self.calculate_flattened_shape(self.input_shape)
@@ -178,8 +177,8 @@ class DeepQNetwork(nn.Module):
 
 
 if __name__ == "__main__":
-    model = DeepQNetwork(input_shape=(3, 84, 84), output_shape=9, learning_rate=0.00025, checkpoint_file='checkpoint.pth')
+    model = DeepQNetwork(input_shape=(4, 84, 84), output_shape=9, learning_rate=0.00025, checkpoint_file='checkpoint.pth')
     # model.load_checkpoint()
     # model.save_checkpoint()
-    model.forward(torch.rand(2, 3, 84, 84))
+    model.forward(torch.rand(2, 4, 84, 84))
     pass
