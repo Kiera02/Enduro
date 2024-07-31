@@ -8,6 +8,7 @@ import torch.optim as optim
 import numpy as np
 from torch.nn import MultiheadAttention
 import math
+from torchsummary import summary
 
 class ImgPosEnc(nn.Module):
     """
@@ -105,7 +106,7 @@ class DeepQNetwork(nn.Module):
         self.conv2 = nn.Conv2d(32, 64, 4, 2)
         self.conv3 = nn.Conv2d(64, 256, 3, 1)
 
-        # # Attention mechanism
+        # Attention mechanism
         # Position encoding
         self.pos_enc = ImgPosEnc(d_model=256, temperature=10000.0, normalize=True)
 
@@ -155,19 +156,25 @@ class DeepQNetwork(nn.Module):
 
     def forward(self, inputs):
         # Convolutional layers
+        inputs = inputs.to(self.device)
         x = f.relu(self.conv1(inputs))
         x = f.relu(self.conv2(x))
         x = f.relu(self.conv3(x))
 
-        # # Apply attention mechanism
+        # Apply attention mechanism
         x = self.pos_enc(x.permute(0, 2, 3, 1))
 
         x = self.attention(x.flatten(1,2))
 
-         # Fully connected layers
+        # Fully connected layers
         x = f.relu(self.fc1(x.flatten(1,2)))
         x = self.fc2(x)
-
+        
+        # # without attention
+        # # Flatten
+        # x = x.view(x.size()[0], -1)
+        # # Linear layers
+        # x = f.relu(self.fc1(x))
         return x
 
     def backward(self, target, value):

@@ -1,1 +1,1 @@
-pip install gymnasium[accept-rom-license, atari]
+pip install "gymnasium[atari, accept-rom-license]"

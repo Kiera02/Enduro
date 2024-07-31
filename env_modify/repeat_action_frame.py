@@ -1,4 +1,4 @@
-# Internal
+# Global
 import collections
 
 # External

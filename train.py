@@ -20,6 +20,12 @@ def prep_environment(env, shape, repeat):
     env = NormalizeFrame(env, shape)
     return FrameStack(env, num_stack=repeat)
 
+def check_convergence(rolling_means, threshold=0.01):
+    if len(rolling_means) < 2:
+        return False
+    
+    recent_means = rolling_means[-10:]
+    return np.ptp(recent_means) < threshold
 
 if __name__ == '__main__':
     repeat = 4
@@ -29,9 +35,10 @@ if __name__ == '__main__':
     min_epsilon = 0.01
     epsilon_decay = 0.995
     learning_rate = 0.0001
-    games = 200
+    games = 300
     rolling_average_n = 200
-    directory = 'temp/'
+    directory = 'temp/attention_300/'
+    convergence_threshold = 0.01
 
 
     if not os.path.exists(directory):
@@ -46,7 +53,7 @@ if __name__ == '__main__':
         gamma=gamma,
         epsilon=epsilon,
         learning_rate=learning_rate,
-        checkpoint_dir=directory
+        checkpoint_dir=directory,
     )
 
     best_score = 0
@@ -78,7 +85,9 @@ if __name__ == '__main__':
         rolling_mean = np.mean(scores[-rolling_average_n:])
         rolling_means.append(rolling_mean)
 
-        progress.set_postfix({"Episode": episode, "Score": score, "Avg": rolling_mean, "Best": best_score})
+        convergence_status = "Converged" if check_convergence(rolling_means, threshold=convergence_threshold) else "Not Converged"
+
+        progress.set_postfix({"Episode": episode, "Score": score, "Avg": rolling_mean, "Best": best_score, "Status": convergence_status})
 
         if score > best_score:
             best_score = score
@@ -88,6 +97,12 @@ if __name__ == '__main__':
         if agent.epsilon > min_epsilon:
             agent.epsilon *= epsilon_decay
             agent.epsilon = max(agent.epsilon, min_epsilon)
+
+        # # Check for convergence
+        # if check_convergence(rolling_means, threshold = convergence_threshold):
+        #     print(f"Convergence achieved at episode {episode}.")
+        #     break
+
 
     fig, ax = plt.subplots()
     ax.plot(steps, rolling_means, color="red")
