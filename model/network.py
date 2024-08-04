@@ -110,7 +110,7 @@ class DeepQNetwork(nn.Module):
         # Position encoding
         self.pos_enc = ImgPosEnc(d_model=256, temperature=10000.0, normalize=True)
 
-        self.attention = EncoderAttention(d_model=256, nhead=4, dim_feedforward=512, dropout=0.1, num_encoder_layers=1)
+        self.attention = EncoderAttention(d_model=256, nhead=8, dim_feedforward=1024, dropout=0.1, num_encoder_layers=2)
 
         # Fully connected layers
         flattened_shape = self.calculate_flattened_shape(self.input_shape)
