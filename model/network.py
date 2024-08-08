@@ -103,14 +103,14 @@ class DeepQNetwork(nn.Module):
 
         # Convolutional layers
         self.conv1 = nn.Conv2d(self.input_shape[0], 32, 8, stride=4)
-        self.conv2 = nn.Conv2d(32, 64, 4, 2)
-        self.conv3 = nn.Conv2d(64, 256, 3, 1)
+        self.conv2 = nn.Conv2d(32, 128, 4, 2)
+        self.conv3 = nn.Conv2d(128, 512, 3, 1)
 
         # Attention mechanism
         # Position encoding
-        self.pos_enc = ImgPosEnc(d_model=256, temperature=10000.0, normalize=True)
+        self.pos_enc = ImgPosEnc(d_model=512, temperature=10000.0, normalize=True)
 
-        self.attention = EncoderAttention(d_model=256, nhead=8, dim_feedforward=1024, dropout=0.1, num_encoder_layers=2)
+        self.attention = EncoderAttention(d_model=512, nhead=4, dim_feedforward=1024, dropout=0.1, num_encoder_layers=1)
 
         # Fully connected layers
         flattened_shape = self.calculate_flattened_shape(self.input_shape)
