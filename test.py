@@ -20,9 +20,9 @@ if __name__ == '__main__':
     gamma = 0.99
     epsilon = 0.01
     learning_rate = 0.0001
-    games = 2
+    games = 10
 
-    env = gym.make('ALE/Enduro-v5', max_episode_steps=3000, render_mode='rgb_array')
+    env = gym.make('ALE/Enduro-v5', max_episode_steps=5000, render_mode='rgb_array')
     env = prep_environment(env, frame_shape, repeat=4)
 
     # Load the trained model
@@ -33,20 +33,30 @@ if __name__ == '__main__':
         gamma=gamma,
         epsilon=epsilon,
         learning_rate=learning_rate,
+        checkpoint_dir='temp/finetune/attention_700_1/'
     )
     agent.load_networks()
 
-    # agent.test()
+    total_score = 0
 
     for episode in range(games):
         done = False
         observation, _ = env.reset()
         frames = []
+        episode_score = 0
+
         while not done:
             frames.append(env.render())
             action = agent.choose_action(observation)
             observation, reward, _, done, info = env.step(action)
+            episode_score += reward
 
-        video_filename = f'test_enduro_bot_episode_{episode}.mp4'
-        save_frames_as_video(frames, video_filename)
-        print(f"Video saved as {video_filename}")
+        total_score += episode_score
+
+        if episode == games - 1:
+            video_filename = 'test_finetune_attention_700_1.mp4'
+            save_frames_as_video(frames, video_filename)
+            print(f"Video saved as {video_filename}")
+
+    average_score = total_score / games
+    print(f"Average score over {games} games: {average_score}")
