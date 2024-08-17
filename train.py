@@ -35,9 +35,9 @@ if __name__ == '__main__':
     min_epsilon = 0.01
     epsilon_decay = 0.995
     learning_rate = 0.0001
-    games = 500
+    games = 700
     rolling_average_n = 200
-    directory = 'temp/finetune/attention_500/'
+    directory = 'temp/finetune/attention_700_1/'
     convergence_threshold = 0.01
 
 

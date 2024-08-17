@@ -188,4 +188,5 @@ if __name__ == "__main__":
     # model.load_checkpoint()
     # model.save_checkpoint()
     model.forward(torch.rand(2, 4, 84, 84))
+    print(model)
     pass
